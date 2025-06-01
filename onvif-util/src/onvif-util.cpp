@@ -815,70 +815,59 @@ int main(int argc, char **argv)
 			}
 			else if (args[0] == "move") {
 				args.erase(args.begin());
+
+				auto const subcmd = args[0];
+				args.erase(args.begin());
+
+				// Library requires setting a profile before moving the camera
+				profileCheck(onvif_data, args);
 				
-				if (args[0] == "position") {
-			      		if (args.size() > 1) {
-				    		args.erase(args.begin());
-				    		double const position = stof(args[0]);
-						
-				    		if (absoluteMove(position, 0.5, onvif_data))
-					  		throw std::runtime_error(
-						      			cat("move position - ", onvif_data->last_error));
-						
-				    		std::cout << "  Position " << position << "\n" << std::endl;
-						
-			      		} else {
-				    		std::cout << "  Missing value for Position\n" << std::endl;
-			      		}
-					
-				} else if (args[0] == "pan") {
-			      		if (args.size() > 2) {
-				    		args.erase(args.begin());
-				    		double const pan_rate = stof(args[0]);
-				    		double const tilt_rate = stof(args[1]);
-						
-				    		if (continuousMove(pan_rate, tilt_rate, 0, onvif_data))
-					  		throw std::runtime_error(
-						      			cat("move pan - ", onvif_data->last_error));
-						
-				    		std::cout << "  Pan rate " << pan_rate << ", Tilt rate "
-				  			<< tilt_rate << "\n" << std::endl;
-						
-			      		} else {
-				    		std::cout << "  Missing value for Pan/Tilt\n" << std::endl;
-			      		}
-					
-				} else if (args[0] == "zoom") {
-			      		if (args.size() > 1) {
-				    		args.erase(args.begin());
-				    		double const zoom_rate = stof(args[0]);
-						
-				    		if (continuousMove(0, 0, zoom_rate, onvif_data))
-					  		throw std::runtime_error(
-						      			cat("move zoom - ", onvif_data->last_error));
-						
-				    		std::cout << "  Zoom rate " << zoom_rate << "\n" << std::endl;
-						
-			      		} else {
-				    		std::cout << "  Missing value for Zoom\n" << std::endl;
-			      		}
-					
-				} else if (args[0] == "stop") {
-			      		// Send stop for both pan/tilt and zoom					
-       					if (moveStop(0, onvif_data))
-				    		throw std::runtime_error(
-								cat("move stop pan/tilt - ", onvif_data->last_error));
-					
-			      		if (moveStop(1, onvif_data))
-				    		throw std::runtime_error(
-								cat("move stop zoom - ", onvif_data->last_error));
-					
+				if (subcmd == "position") {
+					if (!args.empty()) {
+						double const position = stof(args[0]);
+						if (absoluteMove(position, 0.5, onvif_data))
+							throw std::runtime_error(cat("move position - ", onvif_data->last_error));
+
+						std::cout << "  Position " << position << "\n" << std::endl;
+					} else {
+						std::cout << "  Missing value for Position\n" << std::endl;
+					}
+				} else if (subcmd == "pan") {
+					if (args.size() > 1) {
+						double const pan_rate = stof(args[0]);
+						double const tilt_rate = stof(args[1]);
+
+						if (continuousMove(pan_rate, tilt_rate, 0, onvif_data))
+							throw std::runtime_error(cat("move pan - ", onvif_data->last_error));
+
+						std::cout << "  Pan rate " << pan_rate << ", Tilt rate " << tilt_rate << "\n" << std::endl;
+					} else {
+						std::cout << "  Missing value for Pan/Tilt\n" << std::endl;
+					}
+				} else if (subcmd == "zoom") {
+					if (!args.empty ()) {
+						double const zoom_rate = stof(args[0]);
+
+						if (continuousMove(0, 0, zoom_rate, onvif_data))
+							throw std::runtime_error(cat("move zoom - ", onvif_data->last_error));
+
+						std::cout << "  Zoom rate " << zoom_rate << "\n" << std::endl;
+					} else {
+						std::cout << "  Missing value for Zoom\n" << std::endl;
+					}
+				} else if (subcmd == "stop") {
+					// Send stop for both pan/tilt and zoom
+					if (moveStop(0, onvif_data))
+						throw std::runtime_error(cat("move stop pan/tilt - ", onvif_data->last_error));
+
+					if (moveStop(1, onvif_data))
+						throw std::runtime_error(cat("move stop zoom - ", onvif_data->last_error));
 				} else {
-			      		std::cout << "  Unrecognized command \"" << args[0]
-			    			<< "\", type \"help\" to see help\n"
-			    			<< std::endl;
+					std::cout << "  Unrecognized command \"" << subcmd
+							<< "\", type \"help\" to see help\n"
+							<< std::endl;
 				}
-		  	}
+			}
 			else if (args[0] == "reboot") {
 				std::cout << "  Are you sure you want to reboot?  Type yes to confirm\n" << std::endl;
 				/*
