@@ -803,9 +803,14 @@ int main(int argc, char **argv)
 			else if (args[0] == "move") {
 				args.erase(args.begin());
 				
-				if (args[0] == "position") {
-			      		if (args.size() > 1) {
-				    		args.erase(args.begin());
+				auto const subcmd = args[0];
+				args.erase(args.begin());
+				
+				// Library requires setting a profile before moving the camera
+				profileCheck(onvif_data, args);
+				
+				if (subcmd == "position") {
+			      		if (!args.empty()) {
 				    		double const position = stof(args[0]);
 						
 				    		if (absoluteMove(position, 0.5, onvif_data))
@@ -818,9 +823,8 @@ int main(int argc, char **argv)
 				    		std::cout << "  Missing value for Position\n" << std::endl;
 			      		}
 					
-				} else if (args[0] == "pan") {
-			      		if (args.size() > 2) {
-				    		args.erase(args.begin());
+				} else if (subcmd == "pan") {
+			      		if (args.size() > 1) {
 				    		double const pan_rate = stof(args[0]);
 				    		double const tilt_rate = stof(args[1]);
 						
@@ -835,9 +839,8 @@ int main(int argc, char **argv)
 				    		std::cout << "  Missing value for Pan/Tilt\n" << std::endl;
 			      		}
 					
-				} else if (args[0] == "zoom") {
-			      		if (args.size() > 1) {
-				    		args.erase(args.begin());
+				} else if (subcmd == "zoom") {
+			      		if (!args.empty()) {
 				    		double const zoom_rate = stof(args[0]);
 						
 				    		if (continuousMove(0, 0, zoom_rate, onvif_data))
@@ -850,7 +853,7 @@ int main(int argc, char **argv)
 				    		std::cout << "  Missing value for Zoom\n" << std::endl;
 			      		}
 					
-				} else if (args[0] == "stop") {
+				} else if (subcmd == "stop") {
 			      		// Send stop for both pan/tilt and zoom					
        					if (moveStop(0, onvif_data))
 				    		throw std::runtime_error(
@@ -861,7 +864,7 @@ int main(int argc, char **argv)
 								cat("move stop zoom - ", onvif_data->last_error));
 					
 				} else {
-			      		std::cout << "  Unrecognized command \"" << args[0]
+			      		std::cout << "  Unrecognized command \"" << subcmd
 			    			<< "\", type \"help\" to see help\n"
 			    			<< std::endl;
 				}
