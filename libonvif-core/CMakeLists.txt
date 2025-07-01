@@ -23,10 +23,12 @@ cmake_minimum_required(VERSION 3.17)
 
 # This is just a non-python involved build of the libonvif directory.
 
-project(libonvif-core VERSION 3.2.6)
+project(libonvif-pkg VERSION 3.2.6)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+add_definitions(-w)
 
 if (DEFINED ENV{LIBXML2_INCLUDE_DIRS})
     set(LIBXML2_INCLUDE_DIRS $ENV{LIBXML2_INCLUDE_DIRS})
