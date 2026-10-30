@@ -156,8 +156,8 @@ struct OnvifData {
     int cache_max;
     bool sync_audio;
     /*move status*/
-    // 0 = pan position, 1 = tilt position
-    float position[2];
+    // 0 = pan position, 1 = tilt position, 2 = zoom position (NAN when the camera reports none)
+    float position[3];
 };
 
 struct OnvifSession {

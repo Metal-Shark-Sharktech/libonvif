@@ -1378,6 +1378,21 @@ int getStatus(struct OnvifData *onvif_data) {
 
         if (resultObj)
             xmlXPathFreeObject(resultObj);
+
+        onvif_data->position[2] = NAN;
+        xmlXPathObjectPtr zoomObj = xmlXPathEvalExpression(
+            BAD_CAST "//s:Body//tptz:GetStatusResponse//tptz:PTZStatus//tt:Position//tt:Zoom",
+            xpathCtx);
+        if (zoomObj && zoomObj->nodesetval && zoomObj->nodesetval->nodeNr > 0) {
+            xmlChar *zVal = xmlGetProp(zoomObj->nodesetval->nodeTab[0], BAD_CAST "x");
+            if (zVal) {
+                onvif_data->position[2] = atof((char*)zVal);
+                xmlFree(zVal);
+            }
+        }
+        if (zoomObj)
+            xmlXPathFreeObject(zoomObj);
+
         xmlXPathFreeContext(xpathCtx);
 
         result = checkForXmlErrorMsg(reply, onvif_data->last_error);
