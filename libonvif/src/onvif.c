@@ -1385,6 +1385,20 @@ int getStatus(struct OnvifData *onvif_data) {
 
                 if (resultObj)
                     xmlXPathFreeObject(resultObj);
+
+                onvif_data->position[2] = NAN;
+                xmlXPathObjectPtr zoomObj = xmlXPathEvalExpression(
+                    BAD_CAST "//s:Body//tptz:GetStatusResponse//tptz:PTZStatus//tt:Position//tt:Zoom",
+                    xpathCtx);
+                if (zoomObj && zoomObj->nodesetval && zoomObj->nodesetval->nodeNr > 0) {
+                    xmlChar *zVal = xmlGetProp(zoomObj->nodesetval->nodeTab[0], BAD_CAST "x");
+                    if (zVal) {
+                        onvif_data->position[2] = atof((char*)zVal);
+                        xmlFree(zVal);
+                    }
+                }
+                if (zoomObj)
+                    xmlXPathFreeObject(zoomObj);
                 xmlXPathFreeContext(xpathCtx);
             }
         }
@@ -3506,7 +3520,7 @@ void clearData(struct OnvifData *onvif_data) {
     onvif_data->hidden = false;
     onvif_data->cache_max = 100;
     onvif_data->sync_audio = false;
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<3; i++) {
         onvif_data->position[i] = 0;
     }
 }
@@ -3621,7 +3635,7 @@ void copyData(struct OnvifData *dst, struct OnvifData *src) {
     dst->hidden = src->hidden;
     dst->cache_max = src->cache_max;
     dst->sync_audio = src->sync_audio;
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<3; i++) {
         dst->position[i] = src->position[i];
     }
 }
