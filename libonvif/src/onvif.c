@@ -1618,6 +1618,90 @@ int gotoHomePosition(struct OnvifData *onvif_data) {
     return result;
 }
 
+int getAuxiliaryCommands(struct OnvifData *onvif_data) {
+    memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
+    onvif_data->auxiliary_command_count = 0;
+    int result = 0;
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
+    xmlDocSetRootElement(doc, root);
+    xmlNsPtr ns_env = xmlNewNs(root, BAD_CAST "http://www.w3.org/2003/05/soap-envelope", BAD_CAST "SOAP-ENV");
+    xmlNsPtr ns_ptz = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl", BAD_CAST "ptz");
+    xmlSetNs(root, ns_env);
+    addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
+    xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
+    xmlNewTextChild(body, ns_ptz, BAD_CAST "GetNodes", NULL);
+    char cmd[4096] = {0};
+    addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->ptz_service, cmd, 4096);
+    xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
+    if (reply != NULL) {
+        xmlXPathContextPtr xpathCtx = xmlXPathNewContext(reply);
+        xmlXPathRegisterNs(xpathCtx, BAD_CAST "tt", BAD_CAST "http://www.onvif.org/ver10/schema");
+        xmlXPathObjectPtr commands = xmlXPathEvalExpression(BAD_CAST "//tt:AuxiliaryCommands", xpathCtx);
+        int max_commands = sizeof(onvif_data->auxiliary_commands) / sizeof(onvif_data->auxiliary_commands[0]);
+        if (commands && commands->nodesetval) {
+            for (int i = 0; i < commands->nodesetval->nodeNr; i++) {
+                xmlChar *name = xmlNodeGetContent(commands->nodesetval->nodeTab[i]);
+                if (!name)
+                    continue;
+                // Nodes share commands; keep each name once
+                bool known = false;
+                for (int j = 0; j < onvif_data->auxiliary_command_count; j++) {
+                    if (strcmp(onvif_data->auxiliary_commands[j], (char*)name) == 0)
+                        known = true;
+                }
+                if (!known && onvif_data->auxiliary_command_count < max_commands) {
+                    char *slot = onvif_data->auxiliary_commands[onvif_data->auxiliary_command_count++];
+                    strncpy(slot, (char*)name, sizeof(onvif_data->auxiliary_commands[0]) - 1);
+                    slot[sizeof(onvif_data->auxiliary_commands[0]) - 1] = '\0';
+                }
+                xmlFree(name);
+            }
+        }
+        if (commands)
+            xmlXPathFreeObject(commands);
+        xmlXPathFreeContext(xpathCtx);
+
+        result = checkForXmlErrorMsg(reply, onvif_data->last_error);
+        if (result < 0)
+            strcat(onvif_data->last_error, " getAuxiliaryCommands");
+        xmlFreeDoc(reply);
+    } else {
+        result = -1;
+        strcpy(onvif_data->last_error, "getAuxiliaryCommands - No XML reply");
+    }
+    return result;
+}
+
+int sendAuxiliaryCommand(char *command, struct OnvifData *onvif_data) {
+    memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
+    int result = 0;
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
+    xmlDocSetRootElement(doc, root);
+    xmlNsPtr ns_env = xmlNewNs(root, BAD_CAST "http://www.w3.org/2003/05/soap-envelope", BAD_CAST "SOAP-ENV");
+    xmlNsPtr ns_ptz = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl", BAD_CAST "ptz");
+    xmlSetNs(root, ns_env);
+    addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
+    xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
+    xmlNodePtr sendAux = xmlNewTextChild(body, ns_ptz, BAD_CAST "SendAuxiliaryCommand", NULL);
+    xmlNewTextChild(sendAux, ns_ptz, BAD_CAST "ProfileToken", BAD_CAST onvif_data->profileToken);
+    xmlNewTextChild(sendAux, ns_ptz, BAD_CAST "AuxiliaryData", BAD_CAST command);
+    char cmd[4096] = {0};
+    addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->ptz_service, cmd, 4096);
+    xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
+    if (reply != NULL) {
+        result = checkForXmlErrorMsg(reply, onvif_data->last_error);
+        if (result < 0)
+            strcat(onvif_data->last_error, " sendAuxiliaryCommand");
+        xmlFreeDoc(reply);
+    } else {
+        result = -1;
+        strcpy(onvif_data->last_error, "sendAuxiliaryCommand - No XML reply");
+    }
+    return result;
+}
+
 int setUser(char *new_password, struct OnvifData *onvif_data) {
     memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
     int result = 0;
@@ -3539,6 +3623,8 @@ void clearData(struct OnvifData *onvif_data) {
     onvif_data->hidden = false;
     onvif_data->cache_max = 100;
     onvif_data->sync_audio = false;
+    memset(onvif_data->auxiliary_commands, 0, sizeof(onvif_data->auxiliary_commands));
+    onvif_data->auxiliary_command_count = 0;
 }
 
 void copyData(struct OnvifData *dst, struct OnvifData *src) {
