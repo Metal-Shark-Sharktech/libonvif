@@ -215,6 +215,7 @@ LIBRARY_API int gotoPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoHomePosition(struct OnvifData *onvif_data);
 LIBRARY_API int getAuxiliaryCommands(struct OnvifData *onvif_data);
 LIBRARY_API int sendAuxiliaryCommand(char *command, struct OnvifData *onvif_data);
+LIBRARY_API int getPresetToken(char *name, char token[128], struct OnvifData *onvif_data);
 
 LIBRARY_API int setUser(char * new_password, struct OnvifData *onvif_data);
 LIBRARY_API int setSystemDateAndTime(struct OnvifData *onvif_data);

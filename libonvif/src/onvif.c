@@ -1702,6 +1702,64 @@ int sendAuxiliaryCommand(char *command, struct OnvifData *onvif_data) {
     return result;
 }
 
+int getPresetToken(char *name, char token[128], struct OnvifData *onvif_data) {
+    memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
+    token[0] = '\0';
+    int result = 0;
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
+    xmlDocSetRootElement(doc, root);
+    xmlNsPtr ns_env = xmlNewNs(root, BAD_CAST "http://www.w3.org/2003/05/soap-envelope", BAD_CAST "SOAP-ENV");
+    xmlNsPtr ns_ptz = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl", BAD_CAST "ptz");
+    xmlSetNs(root, ns_env);
+    addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
+    xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
+    xmlNodePtr getPresets = xmlNewTextChild(body, ns_ptz, BAD_CAST "GetPresets", NULL);
+    xmlNewTextChild(getPresets, ns_ptz, BAD_CAST "ProfileToken", BAD_CAST onvif_data->profileToken);
+    char cmd[4096] = {0};
+    addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->ptz_service, cmd, 4096);
+    xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
+    if (reply != NULL) {
+        xmlXPathContextPtr xpathCtx = xmlXPathNewContext(reply);
+        xmlXPathRegisterNs(xpathCtx, BAD_CAST "tptz", BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl");
+        xmlXPathObjectPtr presets = xmlXPathEvalExpression(BAD_CAST "//tptz:Preset", xpathCtx);
+        if (presets && presets->nodesetval) {
+            for (int i = 0; i < presets->nodesetval->nodeNr && token[0] == '\0'; i++) {
+                xmlNodePtr preset = presets->nodesetval->nodeTab[i];
+                for (xmlNodePtr child = preset->children; child; child = child->next) {
+                    if (child->type != XML_ELEMENT_NODE || xmlStrcmp(child->name, BAD_CAST "Name") != 0)
+                        continue;
+                    xmlChar *preset_name = xmlNodeGetContent(child);
+                    if (preset_name && strcmp((char*)preset_name, name) == 0) {
+                        xmlChar *preset_token = xmlGetProp(preset, BAD_CAST "token");
+                        if (preset_token) {
+                            strncpy(token, (char*)preset_token, 127);
+                            token[127] = '\0';
+                            xmlFree(preset_token);
+                        }
+                    }
+                    if (preset_name)
+                        xmlFree(preset_name);
+                }
+            }
+        }
+        if (presets)
+            xmlXPathFreeObject(presets);
+        xmlXPathFreeContext(xpathCtx);
+
+        result = checkForXmlErrorMsg(reply, onvif_data->last_error);
+        if (result < 0)
+            strcat(onvif_data->last_error, " getPresetToken");
+        else if (token[0] == '\0')
+            result = 1;
+        xmlFreeDoc(reply);
+    } else {
+        result = -1;
+        strcpy(onvif_data->last_error, "getPresetToken - No XML reply");
+    }
+    return result;
+}
+
 int setUser(char *new_password, struct OnvifData *onvif_data) {
     memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
     int result = 0;
