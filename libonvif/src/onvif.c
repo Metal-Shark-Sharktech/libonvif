@@ -1542,6 +1542,70 @@ int moveStop(int type, struct OnvifData *onvif_data) {
     return result;
 }
 
+int focusMove(float speed, struct OnvifData *onvif_data) {
+    memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
+    int result = 0;
+    char speed_buf[128] = {0};
+    sprintf(speed_buf, "%.*f", 2, speed);
+
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
+    xmlDocSetRootElement(doc, root);
+    xmlNsPtr ns_env = xmlNewNs(root, BAD_CAST "http://www.w3.org/2003/05/soap-envelope", BAD_CAST "SOAP-ENV");
+    xmlNsPtr ns_timg = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver20/imaging/wsdl", BAD_CAST "timg");
+    xmlNsPtr ns_tt = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver10/schema", BAD_CAST "tt");
+    xmlSetNs(root, ns_env);
+    addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
+    xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
+    xmlNodePtr move = xmlNewTextChild(body, ns_timg, BAD_CAST "Move", NULL);
+    xmlNewTextChild(move, ns_timg, BAD_CAST "VideoSourceToken", BAD_CAST onvif_data->videoSourceConfigurationToken);
+    xmlNodePtr focus = xmlNewTextChild(move, ns_timg, BAD_CAST "Focus", NULL);
+    xmlNodePtr continuous = xmlNewTextChild(focus, ns_tt, BAD_CAST "Continuous", NULL);
+    xmlNewTextChild(continuous, ns_tt, BAD_CAST "Speed", BAD_CAST speed_buf);
+    char cmd[4096] = {0};
+    addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->imaging_service, cmd, 4096);
+    xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
+    if (reply != NULL) {
+        result = checkForXmlErrorMsg(reply, onvif_data->last_error);
+        if (result < 0)
+            strcat(onvif_data->last_error, " focusMove");
+        xmlFreeDoc(reply);
+    } else {
+        result = -1;
+        strcpy(onvif_data->last_error, "focusMove - No XML reply");
+    }
+    return result;
+}
+
+int focusStop(struct OnvifData *onvif_data) {
+    memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
+    int result = 0;
+
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
+    xmlDocSetRootElement(doc, root);
+    xmlNsPtr ns_env = xmlNewNs(root, BAD_CAST "http://www.w3.org/2003/05/soap-envelope", BAD_CAST "SOAP-ENV");
+    xmlNsPtr ns_timg = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver20/imaging/wsdl", BAD_CAST "timg");
+    xmlSetNs(root, ns_env);
+    addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
+    xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
+    xmlNodePtr stop = xmlNewTextChild(body, ns_timg, BAD_CAST "Stop", NULL);
+    xmlNewTextChild(stop, ns_timg, BAD_CAST "VideoSourceToken", BAD_CAST onvif_data->videoSourceConfigurationToken);
+    char cmd[4096] = {0};
+    addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->imaging_service, cmd, 4096);
+    xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
+    if (reply != NULL) {
+        result = checkForXmlErrorMsg(reply, onvif_data->last_error);
+        if (result < 0)
+            strcat(onvif_data->last_error, " focusStop");
+        xmlFreeDoc(reply);
+    } else {
+        result = -1;
+        strcpy(onvif_data->last_error, "focusStop - No XML reply");
+    }
+    return result;
+}
+
 int setPreset(char *arg, struct OnvifData *onvif_data) {
     memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
     int result = 0;

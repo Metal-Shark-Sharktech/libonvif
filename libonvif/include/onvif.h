@@ -208,6 +208,8 @@ LIBRARY_API int getStatus(struct OnvifData *onvif_data);
 LIBRARY_API int absoluteMove(float position, float speed, struct OnvifData *onvif_data);
 LIBRARY_API int continuousMove(float x, float y, float z, struct OnvifData *onvif_data);
 LIBRARY_API int moveStop(int type, struct OnvifData *onvif_data);
+LIBRARY_API int focusMove(float speed, struct OnvifData *onvif_data);
+LIBRARY_API int focusStop(struct OnvifData *onvif_data);
 LIBRARY_API int setPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoHomePosition(struct OnvifData *onvif_data);
