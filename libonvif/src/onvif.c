@@ -2593,6 +2593,23 @@ xmlXPathObjectPtr getNodeSet (xmlDocPtr doc, xmlChar *xpath) {
     return result;
 }
 
+#define CAMERA_SOCKET_TIMEOUT_SEC 5
+
+static void setCameraSocketTimeouts(int sock) {
+#ifdef _WIN32
+    DWORD timeout_ms = CAMERA_SOCKET_TIMEOUT_SEC * 1000;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+#else
+    struct timeval tv;
+    tv.tv_sec = CAMERA_SOCKET_TIMEOUT_SEC;
+    tv.tv_usec = 0;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    // Linux also applies the send timeout to connect()
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
+}
+
 static void closeCameraSocket(int sock) {
 #ifdef _WIN32
     closesocket(sock);
@@ -2613,9 +2630,8 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
     int start = mark-xaddrs+2;
     int tmp_len = strlen(xaddrs);
     int j;
-    for (j=0; j<tmp_len-start; j++) {
-        if (j < 128)
-            tmp[j] = xaddrs[j+start];
+    for (j=0; j<tmp_len-start && j<127; j++) {
+        tmp[j] = xaddrs[j+start];
     }
     tmp[j] = '\0';
 
@@ -2659,6 +2675,7 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
 #endif
         return NULL;
     }
+    setCameraSocketTimeouts(sock);
 
     memset(&serv_addr, '0', sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -2713,7 +2730,7 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
 
     int i;
     int xml_start = substr - buffer + 4;
-    if (xml_start > 1024) {
+    if (xml_start >= 1024) {
         closeCameraSocket(sock);
         return NULL;
     }
@@ -2744,19 +2761,22 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
         }
     }
     int xml_length = (int) strtol(str_xml_length, (char **)NULL, 10);
-    if (xml_length > 65536) {
+    if (xml_length < 0 || xml_length > 65536) {
         closeCameraSocket(sock);
         return NULL;
     }
-    char xml_reply[65536];
+    char xml_reply[65537];
 
-    for (i=0; i<valread-xml_start; i++) {
+    int cumulative_read = valread - xml_start;
+    if (cumulative_read > xml_length)
+        cumulative_read = xml_length;
+    for (i=0; i<cumulative_read; i++) {
         xml_reply[i] = buffer[i+xml_start];
     }
 
-    int cumulative_read = valread - xml_start;
     while (cumulative_read < xml_length) {
-        valread = recv(sock, buffer, buffer_size, 0);
+        int remaining = xml_length - cumulative_read;
+        valread = recv(sock, buffer, remaining < buffer_size ? remaining : buffer_size, 0);
         if (valread <= 0) {
             closeCameraSocket(sock);
             return NULL;
@@ -2921,9 +2941,8 @@ void addHttpHeader(xmlDocPtr doc, xmlNodePtr root, char *xaddrs, char *post_type
     int start = mark-xaddrs+2;
     int tmp_len = strlen(xaddrs);
     int j;
-    for (j=0; j<tmp_len-start; j++) {
-        if (j < 128)
-            tmp[j] = xaddrs[j+start];
+    for (j=0; j<tmp_len-start && j<127; j++) {
+        tmp[j] = xaddrs[j+start];
     }
     tmp[j] = '\0';
 
@@ -3484,7 +3503,7 @@ void extractHost(char *xaddrs, char host[128]) {
     if (mark = strstr(xaddrs, "//")) {
         int start = mark-xaddrs+2;
         for (int j=0; j < strlen(xaddrs)-start; j++) {
-            if (j < 128)
+            if (j < 127)
                 tmp[j] = xaddrs[j+start];
         }
     }
