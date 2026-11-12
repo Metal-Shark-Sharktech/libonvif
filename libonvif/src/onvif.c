@@ -2451,6 +2451,15 @@ xmlXPathObjectPtr getNodeSet (xmlDocPtr doc, xmlChar *xpath) {
     return result;
 }
 
+static void closeCameraSocket(int sock) {
+#ifdef _WIN32
+    closesocket(sock);
+    WSACleanup();
+#else
+    close(sock);
+#endif
+}
+
 xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
     int sock = 0, valread, flags;
     const int buffer_size = 4096;
@@ -2503,6 +2512,9 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
 #endif
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+#ifdef _WIN32
+        WSACleanup();
+#endif
         return NULL;
     }
 
@@ -2512,6 +2524,7 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
     serv_addr.sin_addr.s_addr = inet_addr(host);
 
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        closeCameraSocket(sock);
         xmlDocPtr doc = NULL;
         xmlNodePtr root_node = NULL;
         doc = xmlNewDoc(BAD_CAST "1.0");
@@ -2523,6 +2536,7 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
 
     if (send(sock , cmd , strlen(cmd) , 0 ) < 0) {
         printf("SEND ERROR %s\n", xaddrs);
+        closeCameraSocket(sock);
         return NULL;
     }
 
@@ -2550,13 +2564,17 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
     }
 
     char * substr = strstr(buffer, http_terminate);
-    if (substr == NULL)
+    if (substr == NULL) {
+        closeCameraSocket(sock);
         return NULL;
+    }
 
     int i;
     int xml_start = substr - buffer + 4;
-    if (xml_start > 1024)
+    if (xml_start > 1024) {
+        closeCameraSocket(sock);
         return NULL;
+    }
     char http_header[1024];
     for (i=0; i<xml_start; i++) {
         http_header[i] = buffer[i];
@@ -2564,12 +2582,16 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
     http_header[xml_start] = '\0';
 
     substr = strstr(http_header, "Content-Length: ");
-    if (substr == NULL)
+    if (substr == NULL) {
+        closeCameraSocket(sock);
         return NULL;
+    }
 
     int length_start = substr - http_header + 16;
-    if ((xml_start - length_start) > 1024)
+    if ((xml_start - length_start) > 1024) {
+        closeCameraSocket(sock);
         return NULL;
+    }
     char str_xml_length[1024];
     for (i=length_start; i<xml_start; i++) {
         if (http_header[i] == '\r' && http_header[i+1] == '\n') {
@@ -2580,8 +2602,10 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
         }
     }
     int xml_length = (int) strtol(str_xml_length, (char **)NULL, 10);
-    if (xml_length > 65536)
+    if (xml_length > 65536) {
+        closeCameraSocket(sock);
         return NULL;
+    }
     char xml_reply[65536];
 
     for (i=0; i<valread-xml_start; i++) {
@@ -2591,6 +2615,10 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
     int cumulative_read = valread - xml_start;
     while (cumulative_read < xml_length) {
         valread = recv(sock, buffer, buffer_size, 0);
+        if (valread <= 0) {
+            closeCameraSocket(sock);
+            return NULL;
+        }
         for (i=0; i<valread; i++) {
             xml_reply[i+cumulative_read] = buffer[i];
         }
@@ -2598,12 +2626,7 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
     }
     xml_reply[xml_length] = '\0';
 
-#ifdef _WIN32
-    closesocket(sock);
-    WSACleanup();
-#else
-    close(sock);
-#endif
+    closeCameraSocket(sock);
 
     xmlDocPtr reply = xmlParseMemory(xml_reply, xml_length);
     char error_msg[1024] = {0};
