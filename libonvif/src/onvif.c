@@ -1755,7 +1755,7 @@ int getHomeSupported(struct OnvifData *onvif_data) {
     xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
     if (reply != NULL) {
         // Supported when any PTZ node has a home position
-        xmlXPathObjectPtr xml_result = getNodeSet(reply, BAD_CAST "//s:Body//tt:HomeSupported[normalize-space(.)='true']");
+        xmlXPathObjectPtr xml_result = getNodeSet(reply, BAD_CAST "//s:Body//tt:HomeSupported[normalize-space(.)='true' or normalize-space(.)='1']");
         if (xml_result) {
             onvif_data->home_supported = true;
             xmlXPathFreeObject(xml_result);
