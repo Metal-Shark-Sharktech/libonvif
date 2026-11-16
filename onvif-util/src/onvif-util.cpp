@@ -130,6 +130,7 @@ static void showHelp()
 			  << "      get video options (n)\n"
 			  << "      get imaging\n"
 			  << "      get imaging options\n"
+			  << "      get focus options\n"
 			  << "      get network\n\n"
 			  << "      get status\n\n"
 			  << "    Parameter Setting Commands (start with set)\n\n"
@@ -150,6 +151,8 @@ static void showHelp()
 			  << "      move position pan_position(required)\n"
 			  << "      move pan pan_value tilt_value(all required)\n"
 			  << "      move zoom value(required)\n"
+			  << "      move focus value(required)\n"
+			  << "      move focus stop\n"
 			  << "      move stop - Stops both pan/tilt and zoom\n\n"
 			  << "    Maintenance Commands\n\n"
 			  << "      help\n"
@@ -568,6 +571,14 @@ int main(int argc, char **argv)
 					std::cout << "  Position X: " << onvif_data->position[0] << "\n";
 					std::cout << "  Position Y: " << onvif_data->position[1] << "\n";
 				}
+				else if (args[0] == "focus" && args.size() > 1 && args[1] == "options") {
+					args.erase(args.begin());
+					profileCheck(onvif_data, args);
+					if (getFocusMoveOptions(onvif_data)) throw std::runtime_error(cat("get focus options - ", onvif_data->last_error));
+					std::cout << "  Continuous: " << (onvif_data->focus_continuous ? "YES" : "NO") << "\n";
+					std::cout << "  Min Speed: " << onvif_data->focus_speed_min << "\n";
+					std::cout << "  Max Speed: " << onvif_data->focus_speed_max << "\n" << std::endl;
+				}
 				else { 
 					std::cout << "  Unrecognized command \"" << args[0] << "\", type \"help\" to see help\n" << std::endl;
 				}
@@ -860,6 +871,27 @@ int main(int argc, char **argv)
 						
 			      		} else {
 				    		std::cout << "  Missing value for Zoom\n" << std::endl;
+			      		}
+					
+				} else if (subcmd == "focus") {
+			      		if (!args.empty() && args[0] == "stop") {
+				    		if (focusStop(onvif_data))
+					  		throw std::runtime_error(
+						      			cat("move focus stop - ", onvif_data->last_error));
+						
+				    		std::cout << "  Focus stopped\n" << std::endl;
+						
+			      		} else if (!args.empty()) {
+				    		double const focus_speed = stof(args[0]);
+						
+				    		if (focusMove(focus_speed, onvif_data))
+					  		throw std::runtime_error(
+						      			cat("move focus - ", onvif_data->last_error));
+						
+				    		std::cout << "  Focus speed " << focus_speed << "\n" << std::endl;
+						
+			      		} else {
+				    		std::cout << "  Missing value for Focus\n" << std::endl;
 			      		}
 					
 				} else if (subcmd == "stop") {

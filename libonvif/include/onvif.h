@@ -98,6 +98,9 @@ struct OnvifData {
     int saturation;
     int contrast;
     int sharpness;
+    bool focus_continuous;
+    float focus_speed_min;
+    float focus_speed_max;
     /*service*/
     char device_service[1024];
     char media_service[1024];
@@ -208,6 +211,9 @@ LIBRARY_API int getStatus(struct OnvifData *onvif_data);
 LIBRARY_API int absoluteMove(float position, float speed, struct OnvifData *onvif_data);
 LIBRARY_API int continuousMove(float x, float y, float z, struct OnvifData *onvif_data);
 LIBRARY_API int moveStop(int type, struct OnvifData *onvif_data);
+LIBRARY_API int focusMove(float speed, struct OnvifData *onvif_data);
+LIBRARY_API int focusStop(struct OnvifData *onvif_data);
+LIBRARY_API int getFocusMoveOptions(struct OnvifData *onvif_data);
 LIBRARY_API int setPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoHomePosition(struct OnvifData *onvif_data);
