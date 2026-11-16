@@ -1,7 +1,7 @@
 #*******************************************************************************
 # libonvif/onvif-util/CMakeLists.txt
 #
-# Copyright (c) 2022, 2025 Stephen Rhodes 
+# Copyright (c) 2022, 2025 Stephen Rhodes
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,24 +33,24 @@ else()
     find_package(LibXml2 REQUIRED)
 endif()
 
-add_library(libonvif STATIC
+add_library(libonvif-static STATIC
     ../libonvif/src/onvif.c
     ../libonvif/src/cencode.c
     ../libonvif/src/sha1.c
 )
 
-target_link_libraries(libonvif PRIVATE
+target_link_libraries(libonvif-static PRIVATE
     ${LIBXML2_LIBRARIES}
 )
 
 if (UNIX)
-    set_target_properties(libonvif PROPERTIES
+    set_target_properties(libonvif-static PROPERTIES
         OUTPUT_NAME onvif
         SOVERSION 1
     )
 endif()
 
-target_include_directories(libonvif PUBLIC
+target_include_directories(libonvif-static PUBLIC
     ../libonvif/include
     ${LIBXML2_INCLUDE_DIRS}
 )
@@ -60,5 +60,5 @@ add_executable(onvif-util
 )
 
 target_link_libraries(onvif-util PRIVATE
-    libonvif
+    libonvif-static
 )
