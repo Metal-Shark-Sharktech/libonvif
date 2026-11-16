@@ -1402,7 +1402,9 @@ int absoluteMove(float position, float speed, struct OnvifData *onvif_data) {
     int result = 0;
 
     char pan_tilt_string[128] = {0};
-    sprintf(pan_tilt_string, "PanTilt x=\"%.*f\" y=\"%.*f\"", 2, position, 2, 0.0);
+    char speed_string[128] = {0};
+    sprintf(pan_tilt_string, "PanTilt x=\"%.*f\" y=\"%.*f\"", 4, position, 4, 0.0);
+    sprintf(speed_string, "PanTilt x=\"%.*f\" y=\"%.*f\"", 2, speed, 2, speed);
 
     xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
     xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
@@ -1426,6 +1428,10 @@ int absoluteMove(float position, float speed, struct OnvifData *onvif_data) {
     // Position
     xmlNodePtr position_node = xmlNewChild(absoluteMove, ns_ptz, BAD_CAST "Position", NULL);
     xmlNewTextChild(position_node, ns_tt, BAD_CAST pan_tilt_string, NULL);
+
+    // Speed
+    xmlNodePtr speed_node = xmlNewChild(absoluteMove, ns_ptz, BAD_CAST "Speed", NULL);
+    xmlNewTextChild(speed_node, ns_tt, BAD_CAST speed_string, NULL);
 
     char cmd[4096] = {0};
     addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->ptz_service, cmd, 4096);
