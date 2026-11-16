@@ -1736,10 +1736,10 @@ int gotoHomePosition(struct OnvifData *onvif_data) {
     return result;
 }
 
-int getHomeSupported(bool *supported, struct OnvifData *onvif_data) {
+int getHomeSupported(struct OnvifData *onvif_data) {
     memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
     int result = 0;
-    *supported = false;
+    onvif_data->home_supported = false;
 
     xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
     xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
@@ -1757,7 +1757,7 @@ int getHomeSupported(bool *supported, struct OnvifData *onvif_data) {
         // Supported when any PTZ node has a home position
         xmlXPathObjectPtr xml_result = getNodeSet(reply, BAD_CAST "//s:Body//tt:HomeSupported[normalize-space(.)='true']");
         if (xml_result) {
-            *supported = true;
+            onvif_data->home_supported = true;
             xmlXPathFreeObject(xml_result);
         }
 
@@ -3741,6 +3741,7 @@ void clearData(struct OnvifData *onvif_data) {
         onvif_data->position[i] = 0;
     }
     onvif_data->position[2] = NAN;
+    onvif_data->home_supported = false;
 }
 
 void copyData(struct OnvifData *dst, struct OnvifData *src) {
@@ -3859,6 +3860,7 @@ void copyData(struct OnvifData *dst, struct OnvifData *src) {
     for (int i=0; i<3; i++) {
         dst->position[i] = src->position[i];
     }
+    dst->home_supported = src->home_supported;
 }
 
 void initializeSession(struct OnvifSession *onvif_session) {

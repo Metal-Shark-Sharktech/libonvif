@@ -161,6 +161,7 @@ struct OnvifData {
     /*move status*/
     // 0 = pan position, 1 = tilt position, 2 = zoom position (NAN when the camera reports none)
     float position[3];
+    bool home_supported;
 };
 
 struct OnvifSession {
@@ -217,7 +218,7 @@ LIBRARY_API int getFocusMoveOptions(struct OnvifData *onvif_data);
 LIBRARY_API int setPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoHomePosition(struct OnvifData *onvif_data);
-LIBRARY_API int getHomeSupported(bool *supported, struct OnvifData *onvif_data);
+LIBRARY_API int getHomeSupported(struct OnvifData *onvif_data);
 
 LIBRARY_API int setUser(char * new_password, struct OnvifData *onvif_data);
 LIBRARY_API int setSystemDateAndTime(struct OnvifData *onvif_data);
