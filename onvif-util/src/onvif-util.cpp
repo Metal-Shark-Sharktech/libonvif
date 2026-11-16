@@ -803,11 +803,20 @@ int main(int argc, char **argv)
 			else if (args[0] == "move") {
 				args.erase(args.begin());
 				
+				if (args.empty()) {
+					std::cout << "  Missing move command\n" << std::endl;
+					continue;
+				}
+				
 				auto const subcmd = args[0];
 				args.erase(args.begin());
 				
-				// Library requires setting a profile before moving the camera
-				profileCheck(onvif_data, args);
+				// Library requires setting a profile before moving the camera; the remaining
+				// args are move values, not a profile index
+				if (!strlen(onvif_data->profileToken)) {
+					std::vector<std::string> tmp;
+					profileCheck(onvif_data, tmp);
+				}
 				
 				if (subcmd == "position") {
 			      		if (!args.empty()) {
