@@ -3740,7 +3740,8 @@ void dumpConfigAll (struct OnvifData *onvif_data) {
     getVideoEncoderConfiguration(onvif_data);
     getProfile(onvif_data);
     getOptions(onvif_data);
-    getStatus(onvif_data);
+    if (strlen(onvif_data->ptz_service))
+        getStatus(onvif_data);
     getImagingSettings(onvif_data);
     getFirstProfileToken(onvif_data);
     getTimeOffset(onvif_data);
