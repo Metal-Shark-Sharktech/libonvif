@@ -1606,10 +1606,12 @@ int focusStop(struct OnvifData *onvif_data) {
     return result;
 }
 
-int getFocusMoveOptions(bool *continuous, struct OnvifData *onvif_data) {
+int getFocusMoveOptions(struct OnvifData *onvif_data) {
     memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
     int result = 0;
-    *continuous = false;
+    onvif_data->focus_continuous = false;
+    onvif_data->focus_speed_min = 0;
+    onvif_data->focus_speed_max = 0;
 
     xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
     xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
@@ -1627,9 +1629,15 @@ int getFocusMoveOptions(bool *continuous, struct OnvifData *onvif_data) {
     if (reply != NULL) {
         xmlXPathObjectPtr xml_result = getNodeSet(reply, BAD_CAST "//s:Body//timg:GetMoveOptionsResponse//timg:MoveOptions//tt:Continuous");
         if (xml_result) {
-            *continuous = true;
+            onvif_data->focus_continuous = true;
             xmlXPathFreeObject(xml_result);
         }
+
+        char temp_buf[128] = {0};
+        if (getXmlValue(reply, BAD_CAST "//s:Body//timg:GetMoveOptionsResponse//timg:MoveOptions//tt:Continuous//tt:Speed//tt:Min", temp_buf, 128) == 0)
+            onvif_data->focus_speed_min = atof(temp_buf);
+        if (getXmlValue(reply, BAD_CAST "//s:Body//timg:GetMoveOptionsResponse//timg:MoveOptions//tt:Continuous//tt:Speed//tt:Max", temp_buf, 128) == 0)
+            onvif_data->focus_speed_max = atof(temp_buf);
 
         result = checkForXmlErrorMsg(reply, onvif_data->last_error);
         if (result < 0)
@@ -3668,6 +3676,9 @@ void clearData(struct OnvifData *onvif_data) {
     onvif_data->saturation = 0;
     onvif_data->contrast = 0;
     onvif_data->sharpness = 0;
+    onvif_data->focus_continuous = false;
+    onvif_data->focus_speed_min = 0;
+    onvif_data->focus_speed_max = 0;
     onvif_data->time_offset = 0;
     //onvif_data->user_time_diff = 0;
     onvif_data->event_listen_port = 0;
@@ -3784,6 +3795,9 @@ void copyData(struct OnvifData *dst, struct OnvifData *src) {
     dst->saturation = src->saturation;
     dst->contrast = src->contrast;
     dst->sharpness = src->sharpness;
+    dst->focus_continuous = src->focus_continuous;
+    dst->focus_speed_min = src->focus_speed_min;
+    dst->focus_speed_max = src->focus_speed_max;
     dst->time_offset = src->time_offset;
     //dst->user_time_diff = src->user_time_diff;
     dst->event_listen_port = src->event_listen_port;
