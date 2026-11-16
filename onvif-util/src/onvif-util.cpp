@@ -131,6 +131,7 @@ static void showHelp()
 			  << "      get imaging\n"
 			  << "      get imaging options\n"
 			  << "      get network\n\n"
+			  << "      get status\n\n"
 			  << "    Parameter Setting Commands (start with set)\n\n"
 			  << "      set resolution (n) - Resolution setting in the format widthxheight, must match the video option\n"
 			  << "      set framerate (n)\n"
@@ -146,6 +147,7 @@ static void showHelp()
 			  << "      set dhcp value(required) - Accepted settings are 'on' and off'\n"
 			  << "      set password  value(required)\n\n"
 			  << "    Movement Commands (start with move)\n"
+			  << "      move position pan_position(required)\n"
 			  << "      move pan pan_value tilt_value(all required)\n"
 			  << "      move zoom value(required)\n"
 			  << "      move stop - Stops both pan/tilt and zoom\n\n"
@@ -560,6 +562,12 @@ int main(int argc, char **argv)
 					std::cout << "  DNS:        " << onvif_data->dns_buf << "\n";
 					std::cout << "  DHCP:       " << (onvif_data->dhcp_enabled ? "YES" : "NO") << "\n" << std::endl;
 				}
+				else if (args[0] == "status") {
+					profileCheck(onvif_data, args);
+					if (getStatus(onvif_data)) throw std::runtime_error(cat("get status - ", onvif_data->last_error));
+					std::cout << "  Position X: " << onvif_data->position[0] << "\n";
+					std::cout << "  Position Y: " << onvif_data->position[1] << "\n";
+				}
 				else { 
 					std::cout << "  Unrecognized command \"" << args[0] << "\", type \"help\" to see help\n" << std::endl;
 				}
@@ -795,9 +803,37 @@ int main(int argc, char **argv)
 			else if (args[0] == "move") {
 				args.erase(args.begin());
 				
-				if (args[0] == "pan") {
-			      		if (args.size() > 2) {
-				    		args.erase(args.begin());
+				if (args.empty()) {
+					std::cout << "  Missing move command\n" << std::endl;
+					continue;
+				}
+				
+				auto const subcmd = args[0];
+				args.erase(args.begin());
+				
+				// Library requires setting a profile before moving the camera; the remaining
+				// args are move values, not a profile index
+				if (!strlen(onvif_data->profileToken)) {
+					std::vector<std::string> tmp;
+					profileCheck(onvif_data, tmp);
+				}
+				
+				if (subcmd == "position") {
+			      		if (!args.empty()) {
+				    		double const position = stof(args[0]);
+						
+				    		if (absoluteMove(position, 0.5, onvif_data))
+					  		throw std::runtime_error(
+						      			cat("move position - ", onvif_data->last_error));
+						
+				    		std::cout << "  Position " << position << "\n" << std::endl;
+						
+			      		} else {
+				    		std::cout << "  Missing value for Position\n" << std::endl;
+			      		}
+					
+				} else if (subcmd == "pan") {
+			      		if (args.size() > 1) {
 				    		double const pan_rate = stof(args[0]);
 				    		double const tilt_rate = stof(args[1]);
 						
@@ -812,9 +848,8 @@ int main(int argc, char **argv)
 				    		std::cout << "  Missing value for Pan/Tilt\n" << std::endl;
 			      		}
 					
-				} else if (args[0] == "zoom") {
-			      		if (args.size() > 1) {
-				    		args.erase(args.begin());
+				} else if (subcmd == "zoom") {
+			      		if (!args.empty()) {
 				    		double const zoom_rate = stof(args[0]);
 						
 				    		if (continuousMove(0, 0, zoom_rate, onvif_data))
@@ -827,7 +862,7 @@ int main(int argc, char **argv)
 				    		std::cout << "  Missing value for Zoom\n" << std::endl;
 			      		}
 					
-				} else if (args[0] == "stop") {
+				} else if (subcmd == "stop") {
 			      		// Send stop for both pan/tilt and zoom					
        					if (moveStop(0, onvif_data))
 				    		throw std::runtime_error(
@@ -838,7 +873,7 @@ int main(int argc, char **argv)
 								cat("move stop zoom - ", onvif_data->last_error));
 					
 				} else {
-			      		std::cout << "  Unrecognized command \"" << args[0]
+			      		std::cout << "  Unrecognized command \"" << subcmd
 			    			<< "\", type \"help\" to see help\n"
 			    			<< std::endl;
 				}
