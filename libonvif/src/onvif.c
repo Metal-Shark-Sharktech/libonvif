@@ -2455,9 +2455,7 @@ xmlXPathObjectPtr getNodeSet (xmlDocPtr doc, xmlChar *xpath) {
 
 static void setCameraSocketTimeouts(int sock) {
 #ifdef _WIN32
-    DWORD timeout_ms = CAMERA_SOCKET_TIMEOUT_SEC * 1000;
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
-    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+    // TODO: Set SO_RCVTIMEO and SO_SNDTIMEO (DWORD milliseconds) once Windows can be tested
 #else
     struct timeval tv;
     tv.tv_sec = CAMERA_SOCKET_TIMEOUT_SEC;
@@ -2529,7 +2527,7 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 #ifdef _WIN32
-        WSACleanup();
+        // TODO: Balance WSAStartup with WSACleanup once Windows can be tested
 #endif
         return NULL;
     }
