@@ -3506,7 +3506,9 @@ void clearData(struct OnvifData *onvif_data) {
     onvif_data->hidden = false;
     onvif_data->cache_max = 100;
     onvif_data->sync_audio = false;
-    memset(onvif_data->position, 0, sizeof(onvif_data->position));
+    for (int i=0; i<2; i++) {
+        onvif_data->position[i] = 0;
+    }
 }
 
 void copyData(struct OnvifData *dst, struct OnvifData *src) {
@@ -3619,7 +3621,9 @@ void copyData(struct OnvifData *dst, struct OnvifData *src) {
     dst->hidden = src->hidden;
     dst->cache_max = src->cache_max;
     dst->sync_audio = src->sync_audio;
-    memcpy(dst->position, src->position, sizeof(dst->position));
+    for (int i=0; i<2; i++) {
+        dst->position[i] = src->position[i];
+    }
 }
 
 void initializeSession(struct OnvifSession *onvif_session) {
