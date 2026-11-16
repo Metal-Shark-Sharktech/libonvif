@@ -2616,11 +2616,12 @@ xmlDocPtr sendCommandToCamera(char *cmd, char *xaddrs) {
             str_xml_length[i - length_start] = http_header[i];
         }
     }
-    int xml_length = (int) strtol(str_xml_length, (char **)NULL, 10);
-    if (xml_length < 0 || xml_length > 65536) {
+    long content_length = strtol(str_xml_length, (char **)NULL, 10);
+    if (content_length < 0 || content_length > 65536) {
         closeCameraSocket(sock);
         return NULL;
     }
+    int xml_length = (int) content_length;
     char xml_reply[65537];
 
     int cumulative_read = valread - xml_start;
