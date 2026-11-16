@@ -1142,6 +1142,7 @@ int getProfile(struct OnvifData *onvif_data) {
     memset(onvif_data->videoSourceConfigurationToken, 0, sizeof(onvif_data->videoSourceConfigurationToken));
     memset(onvif_data->audioEncoderConfigurationToken, 0, sizeof(onvif_data->audioEncoderConfigurationToken));
     memset(onvif_data->audioSourceConfigurationToken, 0, sizeof(onvif_data->audioSourceConfigurationToken));
+    memset(onvif_data->ptzNodeToken, 0, sizeof(onvif_data->ptzNodeToken));
     memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
 
     int result = 0;
@@ -1172,6 +1173,8 @@ int getProfile(struct OnvifData *onvif_data) {
         getNodeAttribute(reply, xpath, BAD_CAST "token", onvif_data->videoEncoderConfigurationToken, 128);
         xpath = BAD_CAST "//s:Body//trt:GetProfileResponse//trt:Profile//tt:VideoSourceConfiguration//tt:SourceToken";
         getXmlValue(reply, xpath, onvif_data->videoSourceConfigurationToken, 128);
+        xpath = BAD_CAST "//s:Body//trt:GetProfileResponse//trt:Profile//tt:PTZConfiguration//tt:NodeToken";
+        getXmlValue(reply, xpath, onvif_data->ptzNodeToken, 128);
 
         result = checkForXmlErrorMsg(reply, onvif_data->last_error);
         if (result < 0)
@@ -1732,6 +1735,47 @@ int gotoHomePosition(struct OnvifData *onvif_data) {
     } else {
         result = -1;
         strcpy(onvif_data->last_error, "gotoHomePosition - No XML reply");
+    }
+    return result;
+}
+
+int getHomeSupported(struct OnvifData *onvif_data) {
+    memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
+    int result = 0;
+    onvif_data->home_supported = false;
+
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
+    xmlDocSetRootElement(doc, root);
+    xmlNsPtr ns_env = xmlNewNs(root, BAD_CAST "http://www.w3.org/2003/05/soap-envelope", BAD_CAST "SOAP-ENV");
+    xmlNsPtr ns_ptz = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl", BAD_CAST "ptz");
+    xmlSetNs(root, ns_env);
+    addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
+    xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
+    if (strlen(onvif_data->ptzNodeToken)) {
+        xmlNodePtr getNode = xmlNewTextChild(body, ns_ptz, BAD_CAST "GetNode", NULL);
+        xmlNewTextChild(getNode, ns_ptz, BAD_CAST "NodeToken", BAD_CAST onvif_data->ptzNodeToken);
+    } else {
+        xmlNewTextChild(body, ns_ptz, BAD_CAST "GetNodes", NULL);
+    }
+    char cmd[4096] = {0};
+    addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->ptz_service, cmd, 4096);
+    xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
+    if (reply != NULL) {
+        // Supported when the profile's PTZ node has a home position, or any node when the profile names none
+        xmlXPathObjectPtr xml_result = getNodeSet(reply, BAD_CAST "//s:Body//tt:HomeSupported[normalize-space(.)='true' or normalize-space(.)='1']");
+        if (xml_result) {
+            onvif_data->home_supported = true;
+            xmlXPathFreeObject(xml_result);
+        }
+
+        result = checkForXmlErrorMsg(reply, onvif_data->last_error);
+        if (result < 0)
+            strcat(onvif_data->last_error, " getHomeSupported");
+        xmlFreeDoc(reply);
+    } else {
+        result = -1;
+        strcpy(onvif_data->last_error, "getHomeSupported - No XML reply");
     }
     return result;
 }
@@ -3622,6 +3666,7 @@ void clearData(struct OnvifData *onvif_data) {
         onvif_data->ptz_service[i] = '\0';
         onvif_data->event_service[i] = '\0';
         onvif_data->profileToken[i] = '\0';
+        onvif_data->ptzNodeToken[i] = '\0';
         onvif_data->username[i] = '\0';
         onvif_data->password[i] = '\0';
         onvif_data->encoding[i] = '\0';
@@ -3705,6 +3750,7 @@ void clearData(struct OnvifData *onvif_data) {
         onvif_data->position[i] = 0;
     }
     onvif_data->position[2] = NAN;
+    onvif_data->home_supported = false;
 }
 
 void copyData(struct OnvifData *dst, struct OnvifData *src) {
@@ -3740,6 +3786,7 @@ void copyData(struct OnvifData *dst, struct OnvifData *src) {
         dst->ptz_service[i] = src->ptz_service[i];
         dst->event_service[i] = src->event_service[i];
         dst->profileToken[i] = src->profileToken[i];
+        dst->ptzNodeToken[i] = src->ptzNodeToken[i];
         dst->username[i] = src->username[i];
         dst->password[i] = src->password[i];
         dst->encoding[i] = src->encoding[i];
@@ -3823,6 +3870,7 @@ void copyData(struct OnvifData *dst, struct OnvifData *src) {
     for (int i=0; i<3; i++) {
         dst->position[i] = src->position[i];
     }
+    dst->home_supported = src->home_supported;
 }
 
 void initializeSession(struct OnvifSession *onvif_session) {
