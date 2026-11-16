@@ -204,6 +204,7 @@ LIBRARY_API int getImagingSettings(struct OnvifData *onvif_data);
 LIBRARY_API int setImagingSettings(struct OnvifData *onvif_data);
 
 LIBRARY_API int getStatus(struct OnvifData *onvif_data);
+// Pans to position; tilt is held at position[1] from the last getStatus, so poll getStatus first
 LIBRARY_API int absoluteMove(float position, float speed, struct OnvifData *onvif_data);
 LIBRARY_API int continuousMove(float x, float y, float z, struct OnvifData *onvif_data);
 LIBRARY_API int moveStop(int type, struct OnvifData *onvif_data);
