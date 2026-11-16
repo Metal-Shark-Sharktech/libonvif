@@ -156,8 +156,8 @@ struct OnvifData {
     int cache_max;
     bool sync_audio;
     /*move status*/
-    // 0 = pan position, 1 = tilt position
-    float position[2];
+    // 0 = pan position, 1 = tilt position, 2 = zoom position (NAN when the camera reports none)
+    float position[3];
 };
 
 struct OnvifSession {
@@ -204,11 +204,13 @@ LIBRARY_API int getImagingSettings(struct OnvifData *onvif_data);
 LIBRARY_API int setImagingSettings(struct OnvifData *onvif_data);
 
 LIBRARY_API int getStatus(struct OnvifData *onvif_data);
+// Pans to position; tilt is held at position[1] from the last getStatus, so poll getStatus first
 LIBRARY_API int absoluteMove(float position, float speed, struct OnvifData *onvif_data);
 LIBRARY_API int continuousMove(float x, float y, float z, struct OnvifData *onvif_data);
 LIBRARY_API int moveStop(int type, struct OnvifData *onvif_data);
 LIBRARY_API int setPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoPreset(char * arg, struct OnvifData *onvif_data);
+LIBRARY_API int gotoHomePosition(struct OnvifData *onvif_data);
 
 LIBRARY_API int setUser(char * new_password, struct OnvifData *onvif_data);
 LIBRARY_API int setSystemDateAndTime(struct OnvifData *onvif_data);

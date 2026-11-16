@@ -1385,6 +1385,20 @@ int getStatus(struct OnvifData *onvif_data) {
 
                 if (resultObj)
                     xmlXPathFreeObject(resultObj);
+
+                onvif_data->position[2] = NAN;
+                xmlXPathObjectPtr zoomObj = xmlXPathEvalExpression(
+                    BAD_CAST "//s:Body//tptz:GetStatusResponse//tptz:PTZStatus//tt:Position//tt:Zoom",
+                    xpathCtx);
+                if (zoomObj && zoomObj->nodesetval && zoomObj->nodesetval->nodeNr > 0) {
+                    xmlChar *zVal = xmlGetProp(zoomObj->nodesetval->nodeTab[0], BAD_CAST "x");
+                    if (zVal) {
+                        onvif_data->position[2] = atof((char*)zVal);
+                        xmlFree(zVal);
+                    }
+                }
+                if (zoomObj)
+                    xmlXPathFreeObject(zoomObj);
                 xmlXPathFreeContext(xpathCtx);
             }
         }
@@ -1403,7 +1417,8 @@ int absoluteMove(float position, float speed, struct OnvifData *onvif_data) {
 
     char pan_tilt_string[128] = {0};
     char speed_string[128] = {0};
-    sprintf(pan_tilt_string, "PanTilt x=\"%.*f\" y=\"%.*f\"", 4, position, 4, 0.0);
+    // Hold the tilt last read by getStatus so a pan-only move leaves it unchanged
+    sprintf(pan_tilt_string, "PanTilt x=\"%.*f\" y=\"%.*f\"", 4, position, 4, onvif_data->position[1]);
     sprintf(speed_string, "PanTilt x=\"%.*f\" y=\"%.*f\"", 2, speed, 2, speed);
 
     xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
@@ -1581,6 +1596,34 @@ int gotoPreset(char *arg, struct OnvifData *onvif_data) {
     } else {
         result = -1;
         strcpy(onvif_data->last_error, "gotoPreset - No XML reply");
+    }
+    return result;
+}
+
+int gotoHomePosition(struct OnvifData *onvif_data) {
+    memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
+    int result = 0;
+    xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr root = xmlNewDocNode(doc, NULL, BAD_CAST "Envelope", NULL);
+    xmlDocSetRootElement(doc, root);
+    xmlNsPtr ns_env = xmlNewNs(root, BAD_CAST "http://www.w3.org/2003/05/soap-envelope", BAD_CAST "SOAP-ENV");
+    xmlNsPtr ns_ptz = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl", BAD_CAST "ptz");
+    xmlSetNs(root, ns_env);
+    addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
+    xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
+    xmlNodePtr gotoHome = xmlNewTextChild(body, ns_ptz, BAD_CAST "GotoHomePosition", NULL);
+    xmlNewTextChild(gotoHome, ns_ptz, BAD_CAST "ProfileToken", BAD_CAST onvif_data->profileToken);
+    char cmd[4096] = {0};
+    addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->ptz_service, cmd, 4096);
+    xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
+    if (reply != NULL) {
+        result = checkForXmlErrorMsg(reply, onvif_data->last_error);
+        if (result < 0)
+            strcat(onvif_data->last_error, " gotoHomePosition");
+        xmlFreeDoc(reply);
+    } else {
+        result = -1;
+        strcpy(onvif_data->last_error, "gotoHomePosition - No XML reply");
     }
     return result;
 }
@@ -3506,9 +3549,10 @@ void clearData(struct OnvifData *onvif_data) {
     onvif_data->hidden = false;
     onvif_data->cache_max = 100;
     onvif_data->sync_audio = false;
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<3; i++) {
         onvif_data->position[i] = 0;
     }
+    onvif_data->position[2] = NAN;
 }
 
 void copyData(struct OnvifData *dst, struct OnvifData *src) {
@@ -3621,7 +3665,7 @@ void copyData(struct OnvifData *dst, struct OnvifData *src) {
     dst->hidden = src->hidden;
     dst->cache_max = src->cache_max;
     dst->sync_audio = src->sync_audio;
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<3; i++) {
         dst->position[i] = src->position[i];
     }
 }
