@@ -147,7 +147,7 @@ static void showHelp()
 			  << "      set dhcp value(required) - Accepted settings are 'on' and off'\n"
 			  << "      set password  value(required)\n\n"
 			  << "    Movement Commands (start with move)\n"
-			  << "      move position value(required)\n"
+			  << "      move position pan_position(required)\n"
 			  << "      move pan pan_value tilt_value(all required)\n"
 			  << "      move zoom value(required)\n"
 			  << "      move stop - Stops both pan/tilt and zoom\n\n"

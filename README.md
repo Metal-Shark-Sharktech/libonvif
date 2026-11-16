@@ -2619,11 +2619,11 @@ Once logged into the camera you can set parameters using the 'set' command follo
 
 ---
 
-Note that for all commands a profile must be selected first, i.e. get profile. Values for pan_value, tilt_value and zoom_value are all floating point numbers between -1.0 and 1.0.
+If no profile has been selected, move commands use profile 0; use get profile (n) first to move using another profile. Values for pan_position, pan_value, tilt_value and zoom_value are all floating point numbers between -1.0 and 1.0.
 
-Sends an absolute move command to the camera.
+Moves the camera to an absolute pan position.
 
-- move position value(required)
+ - move position pan_position (required)
 
 Sends continuous move commands to the camera.
 
