@@ -161,6 +161,7 @@ struct OnvifData {
     /*move status*/
     // 0 = pan position, 1 = tilt position, 2 = zoom position (NAN when the camera reports none)
     float position[3];
+    char ptzNodeToken[128];
     bool home_supported;
 };
 

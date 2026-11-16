@@ -1142,6 +1142,7 @@ int getProfile(struct OnvifData *onvif_data) {
     memset(onvif_data->videoSourceConfigurationToken, 0, sizeof(onvif_data->videoSourceConfigurationToken));
     memset(onvif_data->audioEncoderConfigurationToken, 0, sizeof(onvif_data->audioEncoderConfigurationToken));
     memset(onvif_data->audioSourceConfigurationToken, 0, sizeof(onvif_data->audioSourceConfigurationToken));
+    memset(onvif_data->ptzNodeToken, 0, sizeof(onvif_data->ptzNodeToken));
     memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
 
     int result = 0;
@@ -1172,6 +1173,8 @@ int getProfile(struct OnvifData *onvif_data) {
         getNodeAttribute(reply, xpath, BAD_CAST "token", onvif_data->videoEncoderConfigurationToken, 128);
         xpath = BAD_CAST "//s:Body//trt:GetProfileResponse//trt:Profile//tt:VideoSourceConfiguration//tt:SourceToken";
         getXmlValue(reply, xpath, onvif_data->videoSourceConfigurationToken, 128);
+        xpath = BAD_CAST "//s:Body//trt:GetProfileResponse//trt:Profile//tt:PTZConfiguration//tt:NodeToken";
+        getXmlValue(reply, xpath, onvif_data->ptzNodeToken, 128);
 
         result = checkForXmlErrorMsg(reply, onvif_data->last_error);
         if (result < 0)
@@ -1749,12 +1752,17 @@ int getHomeSupported(struct OnvifData *onvif_data) {
     xmlSetNs(root, ns_env);
     addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
     xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
-    xmlNewTextChild(body, ns_ptz, BAD_CAST "GetNodes", NULL);
+    if (strlen(onvif_data->ptzNodeToken)) {
+        xmlNodePtr getNode = xmlNewTextChild(body, ns_ptz, BAD_CAST "GetNode", NULL);
+        xmlNewTextChild(getNode, ns_ptz, BAD_CAST "NodeToken", BAD_CAST onvif_data->ptzNodeToken);
+    } else {
+        xmlNewTextChild(body, ns_ptz, BAD_CAST "GetNodes", NULL);
+    }
     char cmd[4096] = {0};
     addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->ptz_service, cmd, 4096);
     xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
     if (reply != NULL) {
-        // Supported when any PTZ node has a home position
+        // Supported when the profile's PTZ node has a home position, or any node when the profile names none
         xmlXPathObjectPtr xml_result = getNodeSet(reply, BAD_CAST "//s:Body//tt:HomeSupported[normalize-space(.)='true' or normalize-space(.)='1']");
         if (xml_result) {
             onvif_data->home_supported = true;
@@ -3658,6 +3666,7 @@ void clearData(struct OnvifData *onvif_data) {
         onvif_data->ptz_service[i] = '\0';
         onvif_data->event_service[i] = '\0';
         onvif_data->profileToken[i] = '\0';
+        onvif_data->ptzNodeToken[i] = '\0';
         onvif_data->username[i] = '\0';
         onvif_data->password[i] = '\0';
         onvif_data->encoding[i] = '\0';
@@ -3777,6 +3786,7 @@ void copyData(struct OnvifData *dst, struct OnvifData *src) {
         dst->ptz_service[i] = src->ptz_service[i];
         dst->event_service[i] = src->event_service[i];
         dst->profileToken[i] = src->profileToken[i];
+        dst->ptzNodeToken[i] = src->ptzNodeToken[i];
         dst->username[i] = src->username[i];
         dst->password[i] = src->password[i];
         dst->encoding[i] = src->encoding[i];
