@@ -3552,6 +3552,7 @@ void clearData(struct OnvifData *onvif_data) {
     for (int i=0; i<3; i++) {
         onvif_data->position[i] = 0;
     }
+    onvif_data->position[2] = NAN;
 }
 
 void copyData(struct OnvifData *dst, struct OnvifData *src) {
