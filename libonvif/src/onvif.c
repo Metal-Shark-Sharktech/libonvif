@@ -1337,7 +1337,6 @@ int getStatus(struct OnvifData *onvif_data) {
     xmlDocSetRootElement(doc, root);
     xmlNsPtr ns_env = xmlNewNs(root, BAD_CAST "http://www.w3.org/2003/05/soap-envelope", BAD_CAST "SOAP-ENV");
     xmlNsPtr ns_ptz = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl", BAD_CAST "tptz");
-    xmlNsPtr ns_tt  = xmlNewNs(root, BAD_CAST "http://www.onvif.org/ver10/schema", BAD_CAST "tt");
     xmlSetNs(root, ns_env);
     addUsernameDigestHeader(root, ns_env, onvif_data->username, onvif_data->password, onvif_data->time_offset);
     xmlNodePtr body = xmlNewTextChild(root, ns_env, BAD_CAST "Body", NULL);
@@ -1347,42 +1346,48 @@ int getStatus(struct OnvifData *onvif_data) {
     addHttpHeader(doc, root, onvif_data->xaddrs, onvif_data->ptz_service, cmd, sizeof(cmd));
     xmlDocPtr reply = sendCommandToCamera(cmd, onvif_data->xaddrs);
     if (reply != NULL) {
-        xmlXPathContextPtr xpathCtx = xmlXPathNewContext(reply);
-        xmlXPathRegisterNs(xpathCtx, BAD_CAST "s", BAD_CAST "http://www.w3.org/2003/05/soap-envelope");
-        xmlXPathRegisterNs(xpathCtx, BAD_CAST "tptz", BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl");
-        xmlXPathRegisterNs(xpathCtx, BAD_CAST "tt", BAD_CAST "http://www.onvif.org/ver10/schema");
-
-        xmlXPathObjectPtr resultObj = xmlXPathEvalExpression(
-            BAD_CAST "//s:Body//tptz:GetStatusResponse//tptz:PTZStatus//tt:Position//tt:PanTilt", 
-            xpathCtx);
-
-        if (resultObj && resultObj->nodesetval && resultObj->nodesetval->nodeNr > 0) {
-            xmlNodePtr node = resultObj->nodesetval->nodeTab[0];
-            xmlChar *xVal = xmlGetProp(node, BAD_CAST "x");
-            xmlChar *yVal = xmlGetProp(node, BAD_CAST "y");
-
-            if (xVal && yVal) {
-                onvif_data->position[0] = atof((char*)xVal);
-                onvif_data->position[1] = atof((char*)yVal);
-            } else {
-                strcpy(onvif_data->last_error, "getStatus - Missing PanTilt values");
-                result = -1;
-            }
-
-            if (xVal) xmlFree(xVal);
-            if (yVal) xmlFree(yVal);
-        } else {
-            strcpy(onvif_data->last_error, "getStatus - PTZStatus PanTilt not found");
-            result = -1;
-        }
-
-        if (resultObj)
-            xmlXPathFreeObject(resultObj);
-        xmlXPathFreeContext(xpathCtx);
-
         result = checkForXmlErrorMsg(reply, onvif_data->last_error);
-        if (result < 0)
+        if (result < 0) {
             strcat(onvif_data->last_error, " getStatus");
+        } else {
+            xmlXPathContextPtr xpathCtx = xmlXPathNewContext(reply);
+            if (xpathCtx == NULL) {
+                strcpy(onvif_data->last_error, "getStatus - Unable to create XPath context");
+                result = -1;
+            } else {
+                xmlXPathRegisterNs(xpathCtx, BAD_CAST "s", BAD_CAST "http://www.w3.org/2003/05/soap-envelope");
+                xmlXPathRegisterNs(xpathCtx, BAD_CAST "tptz", BAD_CAST "http://www.onvif.org/ver20/ptz/wsdl");
+                xmlXPathRegisterNs(xpathCtx, BAD_CAST "tt", BAD_CAST "http://www.onvif.org/ver10/schema");
+
+                xmlXPathObjectPtr resultObj = xmlXPathEvalExpression(
+                    BAD_CAST "//s:Body//tptz:GetStatusResponse//tptz:PTZStatus//tt:Position//tt:PanTilt", 
+                    xpathCtx);
+
+                if (resultObj && resultObj->nodesetval && resultObj->nodesetval->nodeNr > 0) {
+                    xmlNodePtr node = resultObj->nodesetval->nodeTab[0];
+                    xmlChar *xVal = xmlGetProp(node, BAD_CAST "x");
+                    xmlChar *yVal = xmlGetProp(node, BAD_CAST "y");
+
+                    if (xVal && yVal) {
+                        onvif_data->position[0] = atof((char*)xVal);
+                        onvif_data->position[1] = atof((char*)yVal);
+                    } else {
+                        strcpy(onvif_data->last_error, "getStatus - Missing PanTilt values");
+                        result = -1;
+                    }
+
+                    if (xVal) xmlFree(xVal);
+                    if (yVal) xmlFree(yVal);
+                } else {
+                    strcpy(onvif_data->last_error, "getStatus - PTZStatus PanTilt not found");
+                    result = -1;
+                }
+
+                if (resultObj)
+                    xmlXPathFreeObject(resultObj);
+                xmlXPathFreeContext(xpathCtx);
+            }
+        }
         xmlFreeDoc(reply);
     } else {
         result = -1;
