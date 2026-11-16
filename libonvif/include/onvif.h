@@ -217,6 +217,7 @@ LIBRARY_API int getFocusMoveOptions(struct OnvifData *onvif_data);
 LIBRARY_API int setPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoPreset(char * arg, struct OnvifData *onvif_data);
 LIBRARY_API int gotoHomePosition(struct OnvifData *onvif_data);
+LIBRARY_API int getHomeSupported(bool *supported, struct OnvifData *onvif_data);
 
 LIBRARY_API int setUser(char * new_password, struct OnvifData *onvif_data);
 LIBRARY_API int setSystemDateAndTime(struct OnvifData *onvif_data);
