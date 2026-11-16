@@ -2580,6 +2580,7 @@ Once logged into the camera you can view data using the 'get' command followed b
 - get video options (n)
 - get imaging
 - get imaging options
+- get focus options
 - get network
 - get status
 
@@ -2629,6 +2630,8 @@ Sends continuous move commands to the camera.
 
  - move pan pan_value tilt_value (all required)
  - move zoom zoom_value (required)
+ - move focus focus_speed (required) - between the Min and Max Speed reported by get focus options
+ - move focus stop
  - move stop (Stops both pan/tilt and zoom)
 
 ---
