@@ -1418,7 +1418,7 @@ int absoluteMove(float position, float speed, struct OnvifData *onvif_data) {
     memset(onvif_data->last_error, 0, sizeof(onvif_data->last_error));
     int result = 0;
 
-    // FLIR cameras given a pan speed reach every position clockwise, so the camera picks its own
+    // Do not force a speed as different cameras behave differently.  Let the camera decide how fast to move
     (void)speed;
 
     char pan_tilt_string[128] = {0};
